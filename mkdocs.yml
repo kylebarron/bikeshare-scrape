@@ -1,0 +1,42 @@
+# Project Information
+site_name: Name of the project
+site_description: 'Data exploration to assess statistical power for a roll out of the
+Geisinger Fresh Food Pharmacy program.'
+site_author: 'Kyle Barron'
+
+docs_dir: 'docs'
+site_dir: 'site'
+
+# Project structure:
+pages:
+    - Home: index.md
+    - Admin:
+        - 'Project log': 'admin/project_log.md'
+        - 'Project directory': 'admin/etc/META.md'
+        # - 'Emails': 'admin/emails/*.md'
+    - 'To do': 'todo.md'
+
+# Repository
+repo_name: 'Name of the git repo/project'
+repo_url: 'ssh://barronk@eosloan.mit.edu/home/barronk/projects/jjdoyle.med_proj/'
+
+# Copyright
+copyright: 'Copyright &copy; 2017 Kyle Barron'
+
+# Theme
+theme: 'material'
+
+# Options
+extra:
+    palette:
+        primary: 'orange'
+        accent:  'light blue'
+
+markdown_extensions:
+    - admonition
+    - codehilite
+    - footnotes
+    - meta
+    - pymdownx.smartsymbols
+    - pymdownx.tasklist(custom_checkbox=true)
+    - pymdownx.tilde
