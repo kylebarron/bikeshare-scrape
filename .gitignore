@@ -1,6 +1,7 @@
 data/
 site/
-code/01gbfs_scrape.log
+*.log
+"code/01gbfs_scrape.log"
 *.aac
 
 # ---------------------------------------------------------------------
