@@ -495,3 +495,35 @@ Traceback (most recent call last):
   File "/home/kyle/Documents/research/personal/hubway-expansion/code/01gbfs_scrape.py", line 23, in <module>
     test = create_engine('mysql+pymysql://kyle:' + password + '@localhost/hubway')
 NameError: name 'password' is not defined
+Traceback (most recent call last):
+  File "/home/kyle/Documents/research/personal/hubway-expansion/code/01gbfs_scrape.py", line 23, in <module>
+    test = create_engine('mysql+pymysql://kyle:' + password + '@localhost/hubway')
+NameError: name 'password' is not defined
+Traceback (most recent call last):
+  File "/home/kyle/Documents/research/personal/hubway-expansion/code/01gbfs_scrape.py", line 23, in <module>
+    test = create_engine('mysql+pymysql://kyle:' + password + '@localhost/hubway')
+NameError: name 'password' is not defined
+Traceback (most recent call last):
+  File "/home/kyle/Documents/research/personal/hubway-expansion/code/01gbfs_scrape.py", line 23, in <module>
+    test = create_engine('mysql+pymysql://kyle:' + password + '@localhost/hubway')
+NameError: name 'password' is not defined
+Traceback (most recent call last):
+  File "/home/kyle/Documents/research/personal/hubway-expansion/code/01gbfs_scrape.py", line 23, in <module>
+    test = create_engine('mysql+pymysql://kyle:' + password + '@localhost/hubway')
+NameError: name 'password' is not defined
+Traceback (most recent call last):
+  File "/home/kyle/Documents/research/personal/hubway-expansion/code/01gbfs_scrape.py", line 23, in <module>
+    test = create_engine('mysql+pymysql://kyle:' + password + '@localhost/hubway')
+NameError: name 'password' is not defined
+Traceback (most recent call last):
+  File "/home/kyle/Documents/research/personal/hubway-expansion/code/01gbfs_scrape.py", line 23, in <module>
+    test = create_engine('mysql+pymysql://kyle:' + password + '@localhost/hubway')
+NameError: name 'password' is not defined
+Traceback (most recent call last):
+  File "/home/kyle/Documents/research/personal/hubway-expansion/code/01gbfs_scrape.py", line 13, in <module>
+    password = open("~/.config/mysql_kyle_passwd", 'r').read()
+FileNotFoundError: [Errno 2] No such file or directory: '~/.config/mysql_kyle_passwd'
+Traceback (most recent call last):
+  File "/home/kyle/Documents/research/personal/hubway-expansion/code/01gbfs_scrape.py", line 13, in <module>
+    password = open("~/.config/mysql_kyle_passwd", 'r').read()
+FileNotFoundError: [Errno 2] No such file or directory: '~/.config/mysql_kyle_passwd'
