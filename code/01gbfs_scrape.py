@@ -10,7 +10,7 @@ url_system_information  = "https://gbfs.thehubway.com/gbfs/en/system_information
 url_station_status      = "https://gbfs.thehubway.com/gbfs/en/station_status.json"
 url_station_information = "https://gbfs.thehubway.com/gbfs/en/station_information.json"
 
-password = open("~/.config/mysql_kyle_passwd", 'r').read()
+password = open("/home/kyle/.config/mysql_kyle_passwd", 'r').read().splitlines()[0]
 
 # For now I'm just going to deal with station_status, since the others don't change as often
 
