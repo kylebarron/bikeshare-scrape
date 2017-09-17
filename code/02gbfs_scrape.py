@@ -1,7 +1,6 @@
 import requests
 import pandas as pd
 import pymysql
-# https://github.com/PyMySQL/PyMySQL
 from sqlalchemy import create_engine
 
 url_system_alerts       = "https://gbfs.thehubway.com/gbfs/en/system_alerts.json"
