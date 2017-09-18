@@ -18,7 +18,7 @@ def main():
     password = open("/home/kyle/.config/mysql_kyle_passwd", 'r').read().splitlines()[0]
     print("\nFinished reading password %s seconds" % (time.time() - start_time))
 
-    url_df  = pd.read_csv(os.path.join("..", "data", "url_list.csv"))
+    url_df  = pd.read_csv(os.path.join("home", "kyle", "Documents", "research", "personal", "bikeshare-scrape", "data", "url_list.csv"))
     print("Imported url_list %s seconds" % (time.time() - start_time))
 
     for i in range(len(url_df)):

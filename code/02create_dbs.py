@@ -15,7 +15,7 @@ from sqlalchemy.dialects.mysql import \
 def main():
     password = open("/home/kyle/.config/mysql_kyle_passwd", 'r').read().splitlines()[0]
 
-    systems = pd.read_csv(os.path.join("..", "data", "gbfs_systems.csv"))
+    systems = pd.read_csv(os.path.join("home", "kyle", "Documents", "research", "personal", "bikeshare-scrape", "data", "gbfs_systems.csv"))
 
     # Create a database for each bikeshare provider within MySQL
     for i in systems['System ID']:
