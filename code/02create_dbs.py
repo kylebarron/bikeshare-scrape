@@ -4,15 +4,13 @@ import pymysql
 import os
 from sqlalchemy import create_engine
 from sqlalchemy import MetaData, Column, Table, ForeignKey
-from sqlalchemy_utils import database_exists, create_database
+from sqlalchemy_utils import database_exists, create_database, drop_database
 from sqlalchemy.dialects.mysql import \
         BIGINT, BINARY, BIT, BLOB, BOOLEAN, CHAR, DATE, \
         DATETIME, DECIMAL, DOUBLE, ENUM, FLOAT, INTEGER, \
         LONGBLOB, LONGTEXT, MEDIUMBLOB, MEDIUMINT, MEDIUMTEXT, NCHAR, \
         NUMERIC, NVARCHAR, REAL, SET, SMALLINT, TEXT, TIME, TIMESTAMP, \
         TINYBLOB, TINYINT, TINYTEXT, VARBINARY, VARCHAR, YEAR
-
-main() 
 
 def main():
     password = open("/home/kyle/.config/mysql_kyle_passwd", 'r').read().splitlines()[0]
@@ -22,6 +20,9 @@ def main():
     # Create a database for each bikeshare provider within MySQL
     for i in systems['System ID']:
         engine = create_engine('mysql+pymysql://kyle:' + password + '@localhost/' + i)
+        if database_exists(engine.url):
+            drop_database(engine.url)
+            create_database(engine.url)
         if not database_exists(engine.url):
             create_database(engine.url)
 
@@ -36,6 +37,8 @@ def main():
 
     # Remove all the rows with 'name' == 'gbfs' to prevent infinite recursion
     url_df = url_df[url_df['name'] != 'gbfs']
+    url_df = url_df[url_df['System ID'] != 'curtin_university']
+    url_df.to_csv(os.path.join('..', 'data', 'url_list.csv'))
     
     # Create tables
     for i in range(1, len(url_df)):
@@ -56,9 +59,6 @@ def aside():
     ttl_df[ttl_df['ttl'] != 60]
     # All except Abu Dhabi have 60, Abu Dhabi has 10
     # Therefore collecting data every minute is reasonable
-
-
-url_df 
 
 
 def create_table(type, password, system_id):
@@ -109,7 +109,9 @@ def create_table(type, password, system_id):
             Column('is_installed', BOOLEAN),
             Column('is_renting', BOOLEAN),
             Column('is_returning', BOOLEAN),
-            Column('last_reported', TIMESTAMP)
+            Column('last_reported', TIMESTAMP),
+            Column('last_updated', TIMESTAMP),
+            Column('eightd_has_available_keys', BOOLEAN)
         )
         metadata.create_all()
     
@@ -201,3 +203,4 @@ def create_table(type, password, system_id):
     
 
 
+main()
