@@ -1,71 +1,60 @@
 import requests
 import pandas as pd
-import pymysql
+import psycopg2
 import os
 from sqlalchemy import create_engine
-from sqlalchemy import MetaData, Column, Table, ForeignKey
+from sqlalchemy.schema import CreateSchema
 from sqlalchemy_utils import database_exists, create_database, drop_database
-from sqlalchemy.dialects.mysql import \
-        BIGINT, BINARY, BIT, BLOB, BOOLEAN, CHAR, DATE, \
-        DATETIME, DECIMAL, DOUBLE, ENUM, FLOAT, INTEGER, \
-        LONGBLOB, LONGTEXT, MEDIUMBLOB, MEDIUMINT, MEDIUMTEXT, NCHAR, \
-        NUMERIC, NVARCHAR, REAL, SET, SMALLINT, TEXT, TIME, TIMESTAMP, \
-        TINYBLOB, TINYINT, TINYTEXT, VARBINARY, VARCHAR, YEAR
-
+from sqlalchemy import MetaData, Column, Table, ForeignKey
+from sqlalchemy.dialects.postgresql import \
+    ARRAY, BIGINT, BIT, BOOLEAN, BYTEA, CHAR, CIDR, DATE, \
+    DOUBLE_PRECISION, ENUM, FLOAT, HSTORE, INET, INTEGER, \
+    INTERVAL, JSON, JSONB, MACADDR, NUMERIC, OID, REAL, SMALLINT, TEXT, \
+    TIME, TIMESTAMP, UUID, VARCHAR, INT4RANGE, INT8RANGE, NUMRANGE, \
+    DATERANGE, TSRANGE, TSTZRANGE, TSVECTOR
 def main():
-    password = open("/home/kyle/.config/mysql_kyle_passwd", 'r').read().splitlines()[0]
+    password = open("/home/kyle/.config/postgres_passwd", 'r').read().splitlines()[0]
+    systems = pd.read_csv(os.path.join("..", "data", "gbfs_systems.csv"))
 
-    systems = pd.read_csv(os.path.join("home", "kyle", "Documents", "research", "personal", "bikeshare-scrape", "data", "gbfs_systems.csv"))
-
-    # Create a database for each bikeshare provider within MySQL
-    for i in systems['System ID']:
-        engine = create_engine('mysql+pymysql://kyle:' + password + '@localhost/' + i)
-        if database_exists(engine.url):
-            drop_database(engine.url)
-            create_database(engine.url)
-        if not database_exists(engine.url):
-            create_database(engine.url)
+    # Create one database for all bikeshare tables
+    engine = create_engine('postgresql+psycopg2://kyle:' + password + '@localhost:5433/bikeshare')
+    if not database_exists(engine.url):
+        engine_kyle = create_engine('postgresql+psycopg2://kyle:' + password + '@localhost:5433/kyle')
+        conn = engine_kyle.connect()
+        create_database(engine.url)
+        conn.close()
 
     # Create a data frame of urls for every bikeshare provider
     url_df = pd.DataFrame()
     for i in range(1, len(systems)):
         # First go to the system's gbfs site
-        gbfs = requests.get(systems['Auto-Discovery URL'][i]).json()
-        gbfs_urls = pd.io.json.json_normalize(gbfs['data']['en']['feeds'])
-        gbfs_urls['System ID'] = systems['System ID'][i]
-        url_df = url_df.append(gbfs_urls)
+        try:
+            gbfs = requests.get(systems['Auto-Discovery URL'][i]).json()
+            gbfs_urls = pd.io.json.json_normalize(gbfs['data']['en']['feeds'])
+            gbfs_urls['System ID'] = systems['System ID'][i]
+            url_df = url_df.append(gbfs_urls)
+        except:
+            ConnectionError
 
     # Remove all the rows with 'name' == 'gbfs' to prevent infinite recursion
     url_df = url_df[url_df['name'] != 'gbfs']
-    url_df = url_df[url_df['System ID'] != 'curtin_university']
     url_df.to_csv(os.path.join('..', 'data', 'url_list.csv'))
-    
+
+    # Create schema for each System ID
+    unique_systems = list(set(url_df['System ID'].tolist()))
+    for i in range(1, len(unique_systems)):
+        engine.execute(CreateSchema(unique_systems[i]))
+    engine.execute(CreateSchema('bcycle_clarksville'))
     # Create tables
     for i in range(1, len(url_df)):
-        # Make connection
-        engine = create_engine('mysql+pymysql://kyle:' + password + '@localhost/' + url_df['System ID'].tolist()[i])
-        if not engine.dialect.has_table(engine, url_df['name'].tolist()[i]):
-            create_table(url_df['name'].tolist()[i], password, url_df['System ID'].tolist()[i])
-
-def aside():    
-    # See how often data gets reloaded
-    ttl_df = pd.DataFrame()
-    for i in range(1, len(systems)):
-        ttl = requests.get(systems['Auto-Discovery URL'][i]).json()
-        ttl = pd.io.json.json_normalize(ttl)
-        ttl['System ID'] = systems['System ID'][i]
-        ttl_df = ttl_df.append(ttl[['System ID', 'ttl']])
-        
-    ttl_df[ttl_df['ttl'] != 60]
-    # All except Abu Dhabi have 60, Abu Dhabi has 10
-    # Therefore collecting data every minute is reasonable
+        if not engine.dialect.has_table(engine, url_df['name'].tolist()[i], schema = url_df['System ID'].tolist()[i]):
+            create_table(url_df['name'].tolist()[i], url_df['System ID'].tolist()[i], password)
 
 
-def create_table(type, password, system_id):
-    
+def create_table(type, system_id, password):
+    engine = create_engine('postgresql+psycopg2://kyle:' + password + '@localhost:5433/bikeshare')
+    metadata = MetaData(bind = engine, schema = url_df['System ID'].tolist()[i])
     # if type == 'system_information':
-    #     engine = create_engine('mysql+pymysql://kyle:' + password + '@localhost/' + system_id)
-    #     metadata = MetaData(bind = engine)
     #     table = Table(
     #         'system_information',
     #         metadata,
@@ -75,56 +64,49 @@ def create_table(type, password, system_id):
     #         Column('timezone', VARCHAR(35))
     #     )
     #     metadata.create_all()
-    # 
+    #
     # if type == 'station_information':
-    #     engine = create_engine('mysql+pymysql://kyle:' + password + '@localhost/' + system_id)
-    #     metadata = MetaData(bind = engine)
     #     table = Table(
     #         'station_information',
     #         metadata,
     #         Column('station_information_id', ),
     #         Column('station_id', ),
     #         Column('name', ),
-    #         Column('lat', DECIMAL(9,6)),
-    #         Column('lon', DECIMAL(9,6)),
+    #         Column('lat', NUMERIC(9,6)),
+    #         Column('lon', NUMERIC(9,6)),
     #         Column('region_id', ),
     #         Column('capacity', SmallInteger),
     #         Column('eightd_has_key_dispenser', boolean),
     #     )
     #     metadata.create_all()
-    #     # - rental_methods	Optional	Array of enumerables containing the payment methods accepted at this station. 
-    
+    #     # - rental_methods	Optional	Array of enumerables containing the payment methods accepted at this station.
+
     if type == 'station_status':
-        engine = create_engine('mysql+pymysql://kyle:' + password + '@localhost/' + system_id)
-        metadata = MetaData(bind = engine)
         table = Table(
             'station_status',
             metadata,
-            Column('id', BIGINT(unsigned = True), primary_key = True),
-            Column('station_id', SMALLINT(unsigned = True)),
-            Column('num_bikes_available', TINYINT(unsigned = True)),
-            Column('num_bikes_disabled', TINYINT(unsigned = True)),
-            Column('num_docks_available', TINYINT(unsigned = True)),
-            Column('num_docks_disabled', TINYINT(unsigned = True)),
+            Column('id', BIGINT, primary_key = True),
+            Column('station_id', SMALLINT),
+            Column('num_bikes_available', SMALLINT),
+            Column('num_bikes_disabled', SMALLINT),
+            Column('num_docks_available', SMALLINT),
+            Column('num_docks_disabled', SMALLINT),
             Column('is_installed', BOOLEAN),
             Column('is_renting', BOOLEAN),
             Column('is_returning', BOOLEAN),
             Column('last_reported', TIMESTAMP),
             Column('last_updated', TIMESTAMP),
-            Column('eightd_has_available_keys', BOOLEAN)
-        )
-        metadata.create_all()
-    
+            Column('eightd_has_available_keys', BOOLEAN))
+        metadata.create_all(engine)
+
     if type == 'free_bike_status':
-        engine = create_engine('mysql+pymysql://kyle:' + password + '@localhost/' + system_id)
-        metadata = MetaData(bind = engine)
         table = Table(
             'free_bike_status',
             metadata,
-            Column('id', INTEGER(unsigned = True), primary_key = True),
-            Column('bike_id', SMALLINT(unsigned = True)),
-            Column('lat', DECIMAL(9,6)),
-            Column('lon', DECIMAL(9,6)),
+            Column('id', BIGINT, primary_key = True),
+            Column('bike_id', SMALLINT),
+            Column('lat', NUMERIC(9,6)),
+            Column('lon', NUMERIC(9,6)),
             Column('is_reserved', BOOLEAN),
             Column('is_disabled', BOOLEAN),
             Column('last_updated', TIMESTAMP)
@@ -132,8 +114,6 @@ def create_table(type, password, system_id):
         metadata.create_all()
 
     # if type == 'system_hours':
-    #     engine = create_engine('mysql+pymysql://kyle:' + password + '@localhost/' + system_id)
-    #     metadata = MetaData(bind = engine)
     #     table = Table(
     #     'system_hours',
     #     metadata,
@@ -142,45 +122,39 @@ def create_table(type, password, system_id):
     #     Column('days'),
     #     Column('start_time'),
     #     Column('end_time'),
-    #     
+    #
     #     )
     #     metadata.create_all()
-    
+
     if type == 'system_calendar':
-        engine = create_engine('mysql+pymysql://kyle:' + password + '@localhost/' + system_id)
-        metadata = MetaData(bind = engine)
         table = Table(
             'system_calendar',
             metadata,
-            Column('id', INTEGER(unsigned = True), primary_key = True),
-            Column('start_month', TINYINT(unsigned = True)),
-            Column('start_day', TINYINT(unsigned = True)),
-            Column('start_year', YEAR),
-            Column('end_month', TINYINT(unsigned = True)),
-            Column('end_day', TINYINT(unsigned = True)),
-            Column('end_year', YEAR)
+            Column('id', INTEGER, primary_key = True),
+            Column('start_month', SMALLINT),
+            Column('start_day', SMALLINT),
+            Column('start_year', SMALLINT),
+            Column('end_month', SMALLINT),
+            Column('end_day', SMALLINT),
+            Column('end_year', SMALLINT)
         )
         metadata.create_all()
 
-    if type == 'system_regions': 
-        engine = create_engine('mysql+pymysql://kyle:' + password + '@localhost/' + system_id)
-        metadata = MetaData(bind = engine)
+    if type == 'system_regions':
         table = Table(
             'system_regions',
             metadata,
-            Column('id', INTEGER(unsigned = True), primary_key = True),
-            Column('region_id', SMALLINT(unsigned = True)),
+            Column('id', INTEGER, primary_key = True),
+            Column('region_id', SMALLINT),
             Column('name', VARCHAR(50))
         )
         metadata.create_all()
 
     # if type == 'system_pricing_plans':
-    #     engine = create_engine('mysql+pymysql://kyle:' + password + '@localhost/' + system_id)
-    #     metadata = MetaData(bind = engine)
     #     table = Table(
     #         'system_pricing_plans',
     #         metadata,
-    #         Column('id', INTEGER(unsigned = True), primary_key = True),
+    #         Column('id', INTEGER, primary_key = True),
     #         Column('plan_id'),
     #         Column('url'),
     #         Column('name'),
@@ -192,15 +166,27 @@ def create_table(type, password, system_id):
     #     metadata.create_all()
 
     # if type == 'system_alerts':
-    #     engine = create_engine('mysql+pymysql://kyle:' + password + '@localhost/' + system_id)
-    #     metadata = MetaData(bind = engine)
     #     table = Table(
     #             'system_alerts',
     #             metadata,
-    #             
+    #
     #         )
     #     metadata.create_all()
-    
+
 
 
 main()
+
+def aside():
+    # See how often data gets reloaded
+    ttl_df = pd.DataFrame()
+    for i in range(1, len(systems)):
+        ttl = requests.get(systems['Auto-Discovery URL'][i]).json()
+        ttl = pd.io.json.json_normalize(ttl)
+        ttl['System ID'] = systems['System ID'][i]
+        ttl_df = ttl_df.append(ttl[['System ID', 'ttl']])
+
+    ttl_df[ttl_df['ttl'] != 60]
+    # All except Abu Dhabi have 60, Abu Dhabi has 10
+    # Therefore collecting data every minute is reasonable
+
