@@ -15,10 +15,10 @@ import os
 
 def main():
     start_time = time.time()
-    password = open("/home/kyle/.config/mysql_kyle_passwd", 'r').read().splitlines()[0]
+    password = open("/home/kyle/.config/postgres_passwd", 'r').read().splitlines()[0]
     print("\nFinished reading password %s seconds" % (time.time() - start_time))
 
-    url_df  = pd.read_csv(os.path.join("home", "kyle", "Documents", "research", "personal", "bikeshare-scrape", "data", "url_list.csv"))
+    url_df  = pd.read_csv(os.path.join("..", "data", "url_list.csv"))
     print("Imported url_list %s seconds" % (time.time() - start_time))
 
     for i in range(len(url_df)):
@@ -40,9 +40,9 @@ def get_data(type, url, password, system_id, start_time):
         request = requests.get(url).json()
         station_status = json_normalize(request['data']['stations'])
         print("Downloaded station_status %s seconds" % (time.time() - start_time))
-        
+
         station_status['last_updated'] = request['last_updated']
-        
+
         # Put last_reported in datetime format
         try:
             station_status['last_reported_stamp'] = pd.to_datetime(station_status['last_reported'], unit = 's')
@@ -52,7 +52,7 @@ def get_data(type, url, password, system_id, start_time):
             station_status['last_reported'] = station_status['last_reported'] / 1000
             station_status['last_reported'].fillna(0, inplace = True)
             station_status['last_reported'] = station_status['last_reported'].astype(int)
-            
+
         # Put last_updated in datetime format
         try:
             station_status['last_updated'] = pd.to_datetime(station_status['last_updated'], unit = 's')
@@ -62,7 +62,7 @@ def get_data(type, url, password, system_id, start_time):
             station_status['last_updated'] = station_status['last_updated'] / 1000
             station_status['last_updated'].fillna(0, inplace = True)
             station_status['last_updated'] = station_status['last_updated'].astype(int)
-        
+
         # Extract the number from station_id if there's text in there
         if is_string_dtype(station_status['station_id']):
             if re.search(r'[^0-9]', station_status['station_id'].tolist()[0]):
@@ -78,14 +78,14 @@ def get_data(type, url, password, system_id, start_time):
                     'station_id': 'station_id_num'
                 }
             )
-        
+
         # Now create id as numeric(string(station_id) + string(last_reported))
         station_status['id'] = (
-            station_status['last_reported'].apply(str) + 
+            station_status['last_reported'].apply(str) +
             station_status['station_id_num'].apply(str)
         ).apply(int)
         print('system_id=' + system_id + "\nFinished making id variable %s seconds" % (time.time() - start_time))
-        
+
         toadd = station_status[[
             'id',
             'station_id_num',
@@ -96,14 +96,14 @@ def get_data(type, url, password, system_id, start_time):
             'is_returning',
             'last_reported_stamp',
         ]]
-        
+
         if 'num_bikes_disabled' in station_status.columns:
             toadd['num_bikes_disabled'] = station_status['num_bikes_disabled']
         if 'num_docks_disabled' in station_status.columns:
             toadd['num_docks_disabled'] = station_status['num_docks_disabled']
         if 'eightd_has_available_keys' in station_status.columns:
             toadd['eightd_has_available_keys'] = station_status['eightd_has_available_keys']
-        
+
         toadd = toadd.rename(
             columns = {
                 'station_id_num': 'station_id',
@@ -111,12 +111,12 @@ def get_data(type, url, password, system_id, start_time):
             }
         )
         print('system_id=' + system_id + "\nFinished making toadd df %s seconds" % (time.time() - start_time))
-        
-        
+
+
         engine = create_engine('mysql://kyle:' + password + '@localhost/' + system_id)
         print('system_id=' + system_id + "\nFinished creating engine %s seconds" % (time.time() - start_time))
-        
-        
+
+
         metadata = MetaData(bind = engine)
         table = Table(
             'station_status',
@@ -136,20 +136,20 @@ def get_data(type, url, password, system_id, start_time):
         )
         inserter = table.insert().prefix_with('IGNORE')
         print('system_id=' + system_id + "\nFinished declaring insert statement %s seconds" % (time.time() - start_time))
-        
+
         conn = engine.connect()
         print('system_id=' + system_id + "\nFinished making engine connection %s seconds" % (time.time() - start_time))
-        
+
         conn.execute(inserter, toadd.to_dict('records'))
         print('system_id=' + system_id + "\nFinished inserting records into mysql %s seconds" % (time.time() - start_time))
-        
-        print("--- Total time: %s seconds ---" % (time.time() - start_time))
-        
-        # http://docs.sqlalchemy.org/en/latest/dialects/mysql.html#insert-on-duplicate-key-update-upsert
-        # insert_stmt = 
 
-main() 
+        print("--- Total time: %s seconds ---" % (time.time() - start_time))
+
+        # http://docs.sqlalchemy.org/en/latest/dialects/mysql.html#insert-on-duplicate-key-update-upsert
+        # insert_stmt =
+
+main()
 
 # url = 'https://tor.publicbikesystem.net/ube/gbfs/v1/en/station_status'
 # system_id = 'bike_share_toronto'
-# 
+#
