@@ -1,14 +1,16 @@
 import requests
 import pandas as pd
+import psycopg2
 from pandas.io.json import json_normalize
 from pandas.api.types import is_string_dtype
 from sqlalchemy import MetaData, Column, Table, ForeignKey
 from sqlalchemy import create_engine
-from sqlalchemy.dialects.mysql import \
-        BIGINT, BOOLEAN, INTEGER, \
-        LONGBLOB, LONGTEXT, MEDIUMBLOB, MEDIUMINT, MEDIUMTEXT, NCHAR, \
-        NUMERIC, NVARCHAR, REAL, SET, SMALLINT, TIME, TIMESTAMP, \
-        TINYINT, YEAR
+from sqlalchemy.dialects.postgresql import \
+    ARRAY, BIGINT, BIT, BOOLEAN, BYTEA, CHAR, CIDR, DATE, \
+    DOUBLE_PRECISION, ENUM, FLOAT, HSTORE, INET, INTEGER, INTERVAL, \
+    insert, JSON, JSONB, MACADDR, NUMERIC, OID, REAL, SMALLINT, TEXT, \
+    TIME, TIMESTAMP, UUID, VARCHAR, INT4RANGE, INT8RANGE, NUMRANGE, \
+    DATERANGE, TSRANGE, TSTZRANGE, TSVECTOR
 import re
 import time
 import os
@@ -34,7 +36,8 @@ def main():
             except Exception as e: print(e)
 
 def get_data(type, url, password, system_id, start_time):
-    print('Attempting this for type=' + type + ' url=' + url + ' system_id=' + system_id)
+    print('Attempting data retrieval for type=' + type + ', url=' + url + ', system_id=' + system_id)
+
     if type == 'station_status':
         # Retrieve Data:
         request = requests.get(url).json()
@@ -44,6 +47,8 @@ def get_data(type, url, password, system_id, start_time):
         station_status['last_updated'] = request['last_updated']
 
         # Put last_reported in datetime format
+        # Replace NaN with 1 for the timestamps
+        station_status['last_reported'] = station_status['last_reported'].fillna(value = 1)
         try:
             station_status['last_reported_stamp'] = pd.to_datetime(station_status['last_reported'], unit = 's')
         except:
@@ -94,7 +99,7 @@ def get_data(type, url, password, system_id, start_time):
             'is_installed',
             'is_renting',
             'is_returning',
-            'last_reported_stamp',
+            'last_reported_stamp'
         ]]
 
         if 'num_bikes_disabled' in station_status.columns:
@@ -113,20 +118,20 @@ def get_data(type, url, password, system_id, start_time):
         print('system_id=' + system_id + "\nFinished making toadd df %s seconds" % (time.time() - start_time))
 
 
-        engine = create_engine('mysql://kyle:' + password + '@localhost/' + system_id)
+        engine = create_engine('postgresql+psycopg2://kyle:' + password + '@localhost:5433/bikeshare')
         print('system_id=' + system_id + "\nFinished creating engine %s seconds" % (time.time() - start_time))
 
 
-        metadata = MetaData(bind = engine)
+        metadata = MetaData(bind = engine, schema = system_id)
         table = Table(
             'station_status',
             metadata,
-            Column('id', BIGINT(unsigned = True), primary_key = True),
-            Column('station_id', SMALLINT(unsigned = True)),
-            Column('num_bikes_available', TINYINT(unsigned = True)),
-            Column('num_bikes_disabled', TINYINT(unsigned = True)),
-            Column('num_docks_available', TINYINT(unsigned = True)),
-            Column('num_docks_disabled', TINYINT(unsigned = True)),
+            Column('id', BIGINT, primary_key = True),
+            Column('station_id', SMALLINT),
+            Column('num_bikes_available', SMALLINT),
+            Column('num_bikes_disabled', SMALLINT),
+            Column('num_docks_available', SMALLINT),
+            Column('num_docks_disabled', SMALLINT),
             Column('is_installed', BOOLEAN),
             Column('is_renting', BOOLEAN),
             Column('is_returning', BOOLEAN),
@@ -134,19 +139,22 @@ def get_data(type, url, password, system_id, start_time):
             Column('last_updated', TIMESTAMP),
             Column('eightd_has_available_keys', BOOLEAN)
         )
-        inserter = table.insert().prefix_with('IGNORE')
-        print('system_id=' + system_id + "\nFinished declaring insert statement %s seconds" % (time.time() - start_time))
+
+        insert_stmt = insert(table).on_conflict_do_nothing(
+            index_elements = ['id']
+        )
+        # To check the SQL generated is correct:
+        # print(str(insert_stmt))
 
         conn = engine.connect()
         print('system_id=' + system_id + "\nFinished making engine connection %s seconds" % (time.time() - start_time))
 
-        conn.execute(inserter, toadd.to_dict('records'))
+        conn.execute(insert_stmt, toadd.to_dict('records'))
         print('system_id=' + system_id + "\nFinished inserting records into mysql %s seconds" % (time.time() - start_time))
 
+        conn.close()
         print("--- Total time: %s seconds ---" % (time.time() - start_time))
 
-        # http://docs.sqlalchemy.org/en/latest/dialects/mysql.html#insert-on-duplicate-key-update-upsert
-        # insert_stmt =
 
 main()
 
