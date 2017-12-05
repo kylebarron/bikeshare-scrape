@@ -19,6 +19,8 @@ sudo chsh -s /bin/zsh kyle
 sed -i -e 's/ZSH_THEME="robbyrussell"/ZSH_THEME="materialshell"/g' ~/.zshrc
 wget https://raw.githubusercontent.com/kylebarron/dotfiles/master/zsh/materialshell.zsh-theme \
     -O ~/.oh-my-zsh/themes/materialshell.zsh-theme
+wget https://raw.githubusercontent.com/kylebarron/dotfiles/master/git/gitconfig_desktop \
+    -O ~/.gitconfig
     
 # Allow for copy-paste
 sudo apt install -y xclip
