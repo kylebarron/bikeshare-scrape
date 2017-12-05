@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import psycopg2
+import re
 import requests
 from sqlalchemy         import create_engine
 from sqlalchemy.schema  import CreateSchema
@@ -17,10 +18,15 @@ def main():
     password = open("/home/kyle/.config/postgres_passwd", 'r').read().splitlines()[0]
     systems = pd.read_csv(os.path.join("..", "data", "gbfs_systems.csv"))
 
+    # Get port used:
+    # https://stackoverflow.com/questions/16904997/connection-refused-pgerror-postgresql-and-rails
+    config = open('/etc/postgresql/10/main/postgresql.conf').read()
+    port = re.search(r'port = (\d{4})', config)[1]
+
     # Create one database for all bikeshare tables
-    engine = create_engine('postgresql+psycopg2://kyle:' + password + '@localhost:5433/bikeshare')
+    engine = create_engine('postgresql+psycopg2://kyle:' + password + '@localhost:' + port + '/bikeshare')
     if not database_exists(engine.url):
-        engine_kyle = create_engine('postgresql+psycopg2://kyle:' + password + '@localhost:5433/kyle')
+        engine_kyle = create_engine('postgresql+psycopg2://kyle:' + password + '@localhost:' + port + '/kyle')
         conn = engine_kyle.connect()
         create_database(engine.url)
         conn.close()
@@ -60,7 +66,7 @@ def main():
 
 
 def create_table(type, system_id, password):
-    engine = create_engine('postgresql+psycopg2://kyle:' + password + '@localhost:5433/bikeshare')
+    engine = create_engine('postgresql+psycopg2://kyle:' + password + '@localhost:' + port + '/bikeshare')
     metadata = MetaData(bind = engine, schema = url_df['System ID'].tolist()[i])
     # if type == 'system_information':
     #     table = Table(
