@@ -1,4 +1,9 @@
 #! /usr/bin/env bash
+# Project: Bikeshare-scrape
+# Program: 00server_setup.sh
+# Author:  Kyle Barron <barronk@mit.edu>
+# Created: 12/4/2017, 10:33:12 PM
+# Purpose: Create automated script to set up remote working environment
 
 sudo apt update
 sudo apt upgrade
