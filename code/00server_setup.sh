@@ -36,7 +36,7 @@ source ~/.zshrc
 rm Miniconda3-latest-Linux-x86_64.sh
 
 # Install python packages
-pip install pandas psycopg2 sqlalchemy
+pip install pandas psycopg2 sqlalchemy sqlalchemy_utils
 
 # Install Jupyter
 conda install jupyter
@@ -58,6 +58,10 @@ sudo apt install postgresql-10
 # https://www.digitalocean.com/community/tutorials/how-to-install-and-use-postgresql-on-ubuntu-16-04
 sudo -u postgres createuser -d -r -s kyle
 sudo -u postgres createdb kyle
+# sudo -u postgres psql -c ALTER USER kyle WITH PASSWORD ****
+# Add this password to ~/.config/postgres_passwd
+# NOTE For the connection strings in the python program to work,
+# the postgres password must be the same as the unix password
 
 # Make ssh key to use with Github
 ssh-keygen -t rsa

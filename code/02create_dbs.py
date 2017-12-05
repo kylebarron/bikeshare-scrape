@@ -1,17 +1,18 @@
-import requests
+import os
 import pandas as pd
 import psycopg2
-import os
-from sqlalchemy import create_engine
-from sqlalchemy.schema import CreateSchema
-from sqlalchemy_utils import database_exists, create_database, drop_database
-from sqlalchemy import MetaData, Column, Table, ForeignKey
+import requests
+from sqlalchemy         import create_engine
+from sqlalchemy.schema  import CreateSchema
+from sqlalchemy_utils   import database_exists, create_database, drop_database
+from sqlalchemy         import MetaData, Column, Table, ForeignKey
 from sqlalchemy.dialects.postgresql import \
     ARRAY, BIGINT, BIT, BOOLEAN, BYTEA, CHAR, CIDR, DATE, \
     DOUBLE_PRECISION, ENUM, FLOAT, HSTORE, INET, INTEGER, \
     INTERVAL, JSON, JSONB, MACADDR, NUMERIC, OID, REAL, SMALLINT, TEXT, \
     TIME, TIMESTAMP, UUID, VARCHAR, INT4RANGE, INT8RANGE, NUMRANGE, \
     DATERANGE, TSRANGE, TSTZRANGE, TSVECTOR
+
 def main():
     password = open("/home/kyle/.config/postgres_passwd", 'r').read().splitlines()[0]
     systems = pd.read_csv(os.path.join("..", "data", "gbfs_systems.csv"))
@@ -39,11 +40,18 @@ def main():
     # Remove all the rows with 'name' == 'gbfs' to prevent infinite recursion
     url_df = url_df[url_df['name'] != 'gbfs']
     url_df.to_csv(os.path.join('..', 'data', 'url_list.csv'))
+    
+    # Somewhere around here, I also did manually:
+    # GRANT ALL privileges on DATABASE bikeshare TO kyle;
+    # GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO kyle;
 
     # Create schema for each System ID
     unique_systems = list(set(url_df['System ID'].tolist()))
     for i in range(1, len(unique_systems)):
-        engine.execute(CreateSchema(unique_systems[i]))
+        try:
+            engine.execute(CreateSchema(unique_systems[i]))
+        except:
+            pass
     engine.execute(CreateSchema('bcycle_clarksville'))
     # Create tables
     for i in range(1, len(url_df)):
