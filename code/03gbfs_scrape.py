@@ -89,14 +89,14 @@ def get_station_status(
             station_status['station_id_num'] = num_match_list
         else:
             station_status['station_id_num'] = station_status['station_id'].astype(int)
-        print('system_id=' + system_id + "\nFinished extracting number from station_id %s seconds" % round(time.time() - start_time, 2))
+        print("Finished extracting number from station_id %s seconds" % round(time.time() - start_time, 2))
 
     # Now create id as numeric(string(station_id) + string(last_reported))
     station_status['id'] = (
         station_status['last_reported'].apply(str) +
         station_status['station_id_num'].apply(str)
     ).apply(int)
-    print('system_id=' + system_id + "\nFinished making id variable %s seconds" % round(time.time() - start_time, 2))
+    print("Finished making id variable %s seconds" % round(time.time() - start_time, 2))
     
     station_status.is_installed              = station_status.is_installed.astype(bool)
     station_status.is_renting                = station_status.is_renting.astype(bool)
@@ -126,10 +126,10 @@ def get_station_status(
             'station_id_num': 'station_id',
             'last_reported_stamp': 'last_reported'
     })
-    print('system_id=' + system_id + "\nFinished making toadd df %s seconds" % round(time.time() - start_time, 2))
+    print("Finished making toadd df %s seconds" % round(time.time() - start_time, 2))
 
     engine = create_engine('postgresql+psycopg2://kyle:' + password + '@localhost:' + port + '/bikeshare')
-    print('system_id=' + system_id + "\nFinished creating engine %s seconds" % round(time.time() - start_time, 2))
+    print("Finished creating engine %s seconds" % round(time.time() - start_time, 2))
 
     metadata = MetaData(bind = engine, schema = system_id)
     table = Table(
@@ -155,10 +155,10 @@ def get_station_status(
     # To check the SQL generated is correct: print(str(insert_stmt))
 
     conn = engine.connect()
-    print('system_id=' + system_id + "\nFinished making engine connection %s seconds" % round(time.time() - start_time, 2))
+    print("Finished making engine connection %s seconds" % round(time.time() - start_time, 2))
 
     conn.execute(insert_stmt, toadd.to_dict('records'))
-    print('system_id=' + system_id + "\nFinished inserting records into mysql %s seconds" % round(time.time() - start_time, 2))
+    print("Finished inserting records into mysql %s seconds" % round(time.time() - start_time, 2))
 
     conn.close()
     print("--- Total time: %s seconds ---" % round(time.time() - start_time, 2))
