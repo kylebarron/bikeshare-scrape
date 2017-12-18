@@ -6,7 +6,6 @@ import requests
 import time
 from geoalchemy2      import Geometry
 from pandas.io.json   import json_normalize
-from pandas.api.types import is_string_dtype
 from shapely.geometry import Point
 from sqlalchemy       import MetaData, Column, Table, ForeignKey
 from sqlalchemy       import create_engine
