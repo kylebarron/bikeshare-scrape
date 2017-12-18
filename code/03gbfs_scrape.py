@@ -169,6 +169,9 @@ def get_free_bike_status(
     # Retrieve Data:
     request = requests.get(url).json()
     df = json_normalize(request['data']['bikes'])
+    if df.empty:
+        print("--- No free bikes; exiting ---")
+        return
     df['last_updated'] = request['last_updated']
     print("Downloaded free_bike_status %s seconds" % round(time.time() - start_time, 2))
         
@@ -233,7 +236,3 @@ def get_free_bike_status(
 
 
 main()
-
-# url = 'https://tor.publicbikesystem.net/ube/gbfs/v1/en/station_status'
-# system_id = 'bike_share_toronto'
-#
