@@ -57,50 +57,36 @@ def get_station_status(
     station_status['last_updated'] = request['last_updated']
     print("Downloaded station_status %s seconds" % round(time.time() - start_time, 2))
 
-    # Put last_reported in datetime format
-    # Replace NaN with 1 for the timestamps
-    station_status['last_reported'] = station_status['last_reported'].fillna(value = 1)
-    try:
-        station_status['last_reported_stamp'] = pd.to_datetime(station_status['last_reported'], unit = 's')
-    except:
-        print(system_id + ' felt like using milliseconds')
-        station_status['last_reported_stamp'] = pd.to_datetime(station_status['last_reported'], unit = 'ms')
-        station_status['last_reported'] = station_status['last_reported'] / 1000
-        station_status['last_reported'].fillna(0, inplace = True)
-        station_status['last_reported'] = station_status['last_reported'].astype(int)
-
-    # Put last_updated in datetime format
-    try:
-        station_status['last_updated'] = pd.to_datetime(station_status['last_updated'], unit = 's')
-    except:
-        print(system_id + ' felt like using milliseconds')
-        station_status['last_updated'] = pd.to_datetime(station_status['last_updated'], unit = 'ms')
-        station_status['last_updated'] = station_status['last_updated'] / 1000
-        station_status['last_updated'].fillna(0, inplace = True)
-        station_status['last_updated'] = station_status['last_updated'].astype(int)
-
     # Extract the number from station_id if there's text in there
     try:
-        station_status['station_id_num'] = station_status['station_id'].astype(int)
+        station_status['station_id'] = station_status['station_id'].astype(int)
     except ValueError:
-        if re.search(r'[^0-9]', station_status['station_id'].tolist()[0]):
-            match_list = station_status['station_id'].str.findall(r'[0-9]+')
-            num_match_list = match_list.str[0].astype(int)
-            station_status['station_id_num'] = num_match_list
-        else:
-            station_status['station_id_num'] = station_status['station_id'].astype(int)
+        match_list = station_status['station_id'].str.findall(r'[0-9]+')
+        station_status['station_id'] = match_list.str[0].astype(int)
         print("Finished extracting number from station_id %s seconds" % round(time.time() - start_time, 2))
 
     # Now create id as numeric(string(station_id) + string(last_reported))
     station_status['id'] = (
         station_status['last_reported'].apply(str) +
-        station_status['station_id_num'].apply(str)
+        station_status['station_id'].apply(str)
     ).apply(int)
-    print("Finished making id variable %s seconds" % round(time.time() - start_time, 2))
     
-    station_status.is_installed              = station_status.is_installed.astype(bool)
-    station_status.is_renting                = station_status.is_renting.astype(bool)
-    station_status.is_returning              = station_status.is_returning.astype(bool)
+    # Put last_reported and last_updated in datetime format
+    for var in ['last_reported', 'last_updated']:
+        # Replace NaN with 1 for the timestamps
+        station_status[var] = station_status[var].fillna(value = 1)
+        try:
+            station_status[var] = pd.to_datetime(station_status[var], unit = 's')
+        except:
+            print(system_id + ' felt like using milliseconds')
+            station_status[var] = pd.to_datetime(station_status[var], unit = 'ms')
+            station_status[var] = station_status[var] / 1000
+            station_status[var].fillna(0, inplace = True)
+            station_status[var] = station_status[var].astype(int)
+        
+    station_status.is_installed = station_status.is_installed.astype(bool)
+    station_status.is_renting   = station_status.is_renting.astype(bool)
+    station_status.is_returning = station_status.is_returning.astype(bool)
     try:
         station_status.eightd_has_available_keys = station_status.eightd_has_available_keys.astype(bool)
     except AttributeError:
@@ -108,13 +94,13 @@ def get_station_status(
     
     toadd = station_status[[
         'id',
-        'station_id_num',
+        'station_id',
         'num_bikes_available',
         'num_docks_available',
         'is_installed',
         'is_renting',
         'is_returning',
-        'last_reported_stamp',
+        'last_reported',
         'last_updated'
     ]]
 
@@ -122,10 +108,6 @@ def get_station_status(
         if var in station_status.columns:
             toadd[var] = station_status[var]
 
-    toadd = toadd.rename(columns = {
-            'station_id_num': 'station_id',
-            'last_reported_stamp': 'last_reported'
-    })
     print("Finished making toadd df %s seconds" % round(time.time() - start_time, 2))
 
     engine = create_engine('postgresql+psycopg2://kyle:' + password + '@localhost:' + port + '/bikeshare')
@@ -158,7 +140,7 @@ def get_station_status(
     print("Finished making engine connection %s seconds" % round(time.time() - start_time, 2))
 
     conn.execute(insert_stmt, toadd.to_dict('records'))
-    print("Finished inserting records into mysql %s seconds" % round(time.time() - start_time, 2))
+    print("Finished inserting records into Postgresql %s seconds" % round(time.time() - start_time, 2))
 
     conn.close()
     print("--- Total time: %s seconds ---" % round(time.time() - start_time, 2))
