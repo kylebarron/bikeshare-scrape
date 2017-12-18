@@ -49,7 +49,7 @@ def get_station_status(
     port,
     start_time):
     
-    print('Attempting data retrieval for type=' + type + ', system_id=' + system_id + ', url=' + url)
+    print('Attempting data retrieval for:\ntype = ' + type + '\nsystem_id = ' + system_id + '\nurl=' + url)
 
     # Retrieve Data:
     request = requests.get(url).json()
