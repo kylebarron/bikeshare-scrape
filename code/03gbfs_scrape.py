@@ -1,28 +1,28 @@
-import requests
+import os
 import pandas as pd
 import psycopg2
-from pandas.io.json import json_normalize
+import re
+import requests
+import time
+from pandas.io.json   import json_normalize
 from pandas.api.types import is_string_dtype
-from sqlalchemy import MetaData, Column, Table, ForeignKey
-from sqlalchemy import create_engine
+from sqlalchemy       import MetaData, Column, Table, ForeignKey
+from sqlalchemy       import create_engine
 from sqlalchemy.dialects.postgresql import \
     ARRAY, BIGINT, BIT, BOOLEAN, BYTEA, CHAR, CIDR, DATE, \
     DOUBLE_PRECISION, ENUM, FLOAT, HSTORE, INET, INTEGER, INTERVAL, \
     insert, JSON, JSONB, MACADDR, NUMERIC, OID, REAL, SMALLINT, TEXT, \
     TIME, TIMESTAMP, UUID, VARCHAR, INT4RANGE, INT8RANGE, NUMRANGE, \
     DATERANGE, TSRANGE, TSTZRANGE, TSVECTOR
-import re
-import time
-import os
 
 def main():
     start_time = time.time()
     password = open("/home/kyle/.config/postgres_passwd", 'r').read().splitlines()[0]
-    print("\nFinished reading password %s seconds" % (time.time() - start_time))
+    print("\nFinished reading password %s seconds" % round(time.time() - start_time, 2))
 
     url_df  = pd.read_csv(os.path.join("..", "data", "url_list.csv"))
-    print("Imported url_list %s seconds" % (time.time() - start_time))
-
+    print("Imported url_list %s seconds" % round(time.time() - start_time, 2))
+    
     for i in range(len(url_df)):
         if url_df['name'][i] == 'station_status':
             try:
@@ -42,7 +42,7 @@ def get_data(type, url, password, system_id, start_time):
         # Retrieve Data:
         request = requests.get(url).json()
         station_status = json_normalize(request['data']['stations'])
-        print("Downloaded station_status %s seconds" % (time.time() - start_time))
+        print("Downloaded station_status %s seconds" % round(time.time() - start_time, 2))
 
         station_status['last_updated'] = request['last_updated']
 
@@ -76,7 +76,7 @@ def get_data(type, url, password, system_id, start_time):
                 station_status['station_id_num'] = num_match_list
             else:
                 station_status['station_id_num'] = station_status['station_id'].astype(int)
-            print('system_id=' + system_id + "\nFinished extracting number from station_id %s seconds" % (time.time() - start_time))
+            print('system_id=' + system_id + "\nFinished extracting number from station_id %s seconds" % round(time.time() - start_time, 2))
         else:
             station_status = station_status.rename(
                 columns = {
@@ -89,7 +89,7 @@ def get_data(type, url, password, system_id, start_time):
             station_status['last_reported'].apply(str) +
             station_status['station_id_num'].apply(str)
         ).apply(int)
-        print('system_id=' + system_id + "\nFinished making id variable %s seconds" % (time.time() - start_time))
+        print('system_id=' + system_id + "\nFinished making id variable %s seconds" % round(time.time() - start_time, 2))
 
         toadd = station_status[[
             'id',
@@ -115,11 +115,11 @@ def get_data(type, url, password, system_id, start_time):
                 'last_reported_stamp': 'last_reported'
             }
         )
-        print('system_id=' + system_id + "\nFinished making toadd df %s seconds" % (time.time() - start_time))
+        print('system_id=' + system_id + "\nFinished making toadd df %s seconds" % round(time.time() - start_time, 2))
 
 
         engine = create_engine('postgresql+psycopg2://kyle:' + password + '@localhost:5433/bikeshare')
-        print('system_id=' + system_id + "\nFinished creating engine %s seconds" % (time.time() - start_time))
+        print('system_id=' + system_id + "\nFinished creating engine %s seconds" % round(time.time() - start_time, 2))
 
 
         metadata = MetaData(bind = engine, schema = system_id)
@@ -147,13 +147,13 @@ def get_data(type, url, password, system_id, start_time):
         # print(str(insert_stmt))
 
         conn = engine.connect()
-        print('system_id=' + system_id + "\nFinished making engine connection %s seconds" % (time.time() - start_time))
+        print('system_id=' + system_id + "\nFinished making engine connection %s seconds" % round(time.time() - start_time, 2))
 
         conn.execute(insert_stmt, toadd.to_dict('records'))
-        print('system_id=' + system_id + "\nFinished inserting records into mysql %s seconds" % (time.time() - start_time))
+        print('system_id=' + system_id + "\nFinished inserting records into mysql %s seconds" % round(time.time() - start_time, 2))
 
         conn.close()
-        print("--- Total time: %s seconds ---" % (time.time() - start_time))
+        print("--- Total time: %s seconds ---" % round(time.time() - start_time, 2))
 
 
 main()
