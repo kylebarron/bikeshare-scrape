@@ -101,7 +101,10 @@ def get_station_status(
     station_status.is_installed              = station_status.is_installed.astype(bool)
     station_status.is_renting                = station_status.is_renting.astype(bool)
     station_status.is_returning              = station_status.is_returning.astype(bool)
-    station_status.eightd_has_available_keys = station_status.eightd_has_available_keys.astype(bool)
+    try:
+        station_status.eightd_has_available_keys = station_status.eightd_has_available_keys.astype(bool)
+    except AttributeError:
+        pass
     
     toadd = station_status[[
         'id',
@@ -115,12 +118,9 @@ def get_station_status(
         'last_updated'
     ]]
 
-    if 'num_bikes_disabled' in station_status.columns:
-        toadd['num_bikes_disabled'] = station_status['num_bikes_disabled']
-    if 'num_docks_disabled' in station_status.columns:
-        toadd['num_docks_disabled'] = station_status['num_docks_disabled']
-    if 'eightd_has_available_keys' in station_status.columns:
-        toadd['eightd_has_available_keys'] = station_status['eightd_has_available_keys']
+    for var in ['num_bikes_disabled', 'num_docks_disabled', 'eightd_has_available_keys']:
+        if var in station_status.columns:
+            toadd[var] = station_status[var]
 
     toadd = toadd.rename(columns = {
             'station_id_num': 'station_id',
