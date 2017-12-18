@@ -3,7 +3,7 @@ import pandas as pd
 import psycopg2
 import re
 import requests
-from geoalchemy2 import Geometry
+from geoalchemy2        import Geometry
 from sqlalchemy         import create_engine
 from sqlalchemy.schema  import CreateSchema
 from sqlalchemy_utils   import database_exists, create_database, drop_database
@@ -51,7 +51,7 @@ def main():
 
     # Remove all the rows with 'name' == 'gbfs' to prevent infinite recursion
     url_df = url_df[url_df['name'] != 'gbfs']
-    url_df.to_csv(os.path.join('..', 'data', 'url_list.csv'))
+    url_df.to_csv(os.path.join('..', 'data', 'url_list.csv'), index = False)
     
     # Somewhere around here, I also did manually (in psql):
     # GRANT ALL privileges on DATABASE bikeshare TO kyle;

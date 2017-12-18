@@ -10,4 +10,4 @@ with open(os.path.join("..", "data", "gbfs_systems.csv"), "wb") as f:
 systems = pd.read_csv(os.path.join("..", "data", "gbfs_systems.csv"))
 systems['System ID'] = systems['System ID'].str.lower()
 
-systems.to_csv(os.path.join("..", "data", "gbfs_systems.csv"))
+systems.to_csv(os.path.join("..", "data", "gbfs_systems.csv"), index = False)
