@@ -23,19 +23,31 @@ def main():
     url_df  = pd.read_csv(os.path.join("..", "data", "url_list.csv"))
     print("Imported url_list %s seconds" % round(time.time() - start_time, 2))
     
+    # Get port used:
+    # https://stackoverflow.com/questions/16904997/connection-refused-pgerror-postgresql-and-rails
+    config = open('/etc/postgresql/10/main/postgresql.conf').read()
+    port = re.search(r'port = (\d{4})', config)[1]
+    
     for i in range(len(url_df)):
         if url_df['name'][i] == 'station_status':
             try:
-                get_data(
+                get_station_status(
                     type = url_df['name'][i],
                     url = url_df['url'][i],
-                    password = password,
                     system_id = url_df['System ID'][i],
-                    start_time = start_time
-                )
+                    password = password,
+                    port = port,
+                    start_time = start_time)
             except Exception as e: print(e)
 
-def get_data(type, url, password, system_id, start_time):
+def get_station_status(
+    type,
+    url,
+    system_id,
+    password,
+    port,
+    start_time):
+    
     print('Attempting data retrieval for type=' + type + ', url=' + url + ', system_id=' + system_id)
 
     if type == 'station_status':
@@ -117,8 +129,7 @@ def get_data(type, url, password, system_id, start_time):
         )
         print('system_id=' + system_id + "\nFinished making toadd df %s seconds" % round(time.time() - start_time, 2))
 
-
-        engine = create_engine('postgresql+psycopg2://kyle:' + password + '@localhost:5433/bikeshare')
+        engine = create_engine('postgresql+psycopg2://kyle:' + password + '@localhost:' + port + '/bikeshare')
         print('system_id=' + system_id + "\nFinished creating engine %s seconds" % round(time.time() - start_time, 2))
 
 
