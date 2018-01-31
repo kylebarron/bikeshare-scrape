@@ -3,6 +3,7 @@ import pandas as pd
 import psycopg2
 import re
 import requests
+from geoalchemy2        import Geometry
 from sqlalchemy         import create_engine
 from sqlalchemy.schema  import CreateSchema
 from sqlalchemy_utils   import database_exists, create_database, drop_database
@@ -30,10 +31,15 @@ def main():
         conn = engine_kyle.connect()
         create_database(engine.url)
         conn.close()
+    
+    try:
+        engine.execute('CREATE EXTENSION postgis;')
+    except:
+        pass
 
     # Create a data frame of urls for every bikeshare provider
     url_df = pd.DataFrame()
-    for i in range(1, len(systems)):
+    for i in range(len(systems)):
         # First go to the system's gbfs site
         try:
             gbfs = requests.get(systems['Auto-Discovery URL'][i]).json()
@@ -45,57 +51,59 @@ def main():
 
     # Remove all the rows with 'name' == 'gbfs' to prevent infinite recursion
     url_df = url_df[url_df['name'] != 'gbfs']
-    url_df.to_csv(os.path.join('..', 'data', 'url_list.csv'))
+    url_df.to_csv(os.path.join('..', 'data', 'url_list.csv'), index = False)
     
-    # Somewhere around here, I also did manually:
+    # Somewhere around here, I also did manually (in psql):
     # GRANT ALL privileges on DATABASE bikeshare TO kyle;
     # GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO kyle;
 
     # Create schema for each System ID
     unique_systems = list(set(url_df['System ID'].tolist()))
-    for i in range(1, len(unique_systems)):
+    for i in range(len(unique_systems)):
         try:
             engine.execute(CreateSchema(unique_systems[i]))
         except:
             pass
-    engine.execute(CreateSchema('bcycle_clarksville'))
+
     # Create tables
-    for i in range(1, len(url_df)):
-        if not engine.dialect.has_table(engine, url_df['name'].tolist()[i], schema = url_df['System ID'].tolist()[i]):
-            create_table(url_df['name'].tolist()[i], url_df['System ID'].tolist()[i], password)
+    for i in range(len(url_df)):
+        table_name = url_df['name'].tolist()[i]
+        schema_name = url_df['System ID'].tolist()[i]
+        if not engine.dialect.has_table(engine, table_name, schema = schema_name):
+            create_table(table_name, schema_name, password)
 
-
-def create_table(type, system_id, password):
+def create_table(table_name, schema_name, password):
     engine = create_engine('postgresql+psycopg2://kyle:' + password + '@localhost:' + port + '/bikeshare')
-    metadata = MetaData(bind = engine, schema = url_df['System ID'].tolist()[i])
-    # if type == 'system_information':
+    metadata = MetaData(bind = engine, schema = schema_name)
+    # if table_name == 'system_information':
     #     table = Table(
     #         'system_information',
     #         metadata,
     #         Column('last_updated', Timestamp, primary_key = True),
-    #         Column('system_id', VARCHAR(28)),
-    #         Column('language', VARCHAR(3)),
-    #         Column('timezone', VARCHAR(35))
+    #         Column('system_id', VARCHAR(255)),
+    #         Column('language', VARCHAR(255)),
+    #         Column('timezone', VARCHAR(255))
     #     )
     #     metadata.create_all()
     #
-    # if type == 'station_information':
-    #     table = Table(
-    #         'station_information',
-    #         metadata,
-    #         Column('station_information_id', ),
-    #         Column('station_id', ),
-    #         Column('name', ),
-    #         Column('lat', NUMERIC(9,6)),
-    #         Column('lon', NUMERIC(9,6)),
-    #         Column('region_id', ),
-    #         Column('capacity', SmallInteger),
-    #         Column('eightd_has_key_dispenser', boolean),
-    #     )
-    #     metadata.create_all()
-    #     # - rental_methods	Optional	Array of enumerables containing the payment methods accepted at this station.
-
-    if type == 'station_status':
+    if table_name == 'station_information':
+        table = Table(
+            'station_information',
+            metadata,
+            Column('id', BIGINT, primary_key = True),
+            Column('station_id', SMALLINT),
+            Column('name', VARCHAR(255)),
+            Column('lat_lon', Geometry(geometry_type='POINT', srid=4326)),
+            Column('address', VARCHAR(255)),
+            Column('cross_street', VARCHAR(255)),
+            Column('post_code', VARCHAR(255)),
+            Column('region_id', VARCHAR(255)),
+            Column('capacity', SMALLINT),
+            Column('last_updated', TIMESTAMP),
+            Column('eightd_has_key_dispenser', BOOLEAN))
+        metadata.create_all()
+    
+    if table_name == 'station_status':
         table = Table(
             'station_status',
             metadata,
@@ -111,36 +119,32 @@ def create_table(type, system_id, password):
             Column('last_reported', TIMESTAMP),
             Column('last_updated', TIMESTAMP),
             Column('eightd_has_available_keys', BOOLEAN))
-        metadata.create_all(engine)
+        metadata.create_all()
 
-    if type == 'free_bike_status':
+    if table_name == 'free_bike_status':
         table = Table(
             'free_bike_status',
             metadata,
             Column('id', BIGINT, primary_key = True),
             Column('bike_id', SMALLINT),
-            Column('lat', NUMERIC(9,6)),
-            Column('lon', NUMERIC(9,6)),
+            Column('lat_lon', Geometry(geometry_type='POINT', srid=4326)),
             Column('is_reserved', BOOLEAN),
             Column('is_disabled', BOOLEAN),
-            Column('last_updated', TIMESTAMP)
-        )
+            Column('last_updated', TIMESTAMP))
         metadata.create_all()
 
-    # if type == 'system_hours':
+    # if table_name == 'system_hours':
     #     table = Table(
     #     'system_hours',
-    #     metadata,
-    #     Column('id'),
-    #     Column('user_types'),
-    #     Column('days'),
-    #     Column('start_time'),
-    #     Column('end_time'),
-    #
-    #     )
+    #         metadata,
+    #         Column('id'),
+    #         Column('user_types'),
+    #         Column('days'),
+    #         Column('start_time'),
+    #         Column('end_time'))
     #     metadata.create_all()
 
-    if type == 'system_calendar':
+    if table_name == 'system_calendar':
         table = Table(
             'system_calendar',
             metadata,
@@ -150,44 +154,44 @@ def create_table(type, system_id, password):
             Column('start_year', SMALLINT),
             Column('end_month', SMALLINT),
             Column('end_day', SMALLINT),
-            Column('end_year', SMALLINT)
-        )
+            Column('end_year', SMALLINT))
         metadata.create_all()
 
-    if type == 'system_regions':
+    if table_name == 'system_regions':
         table = Table(
             'system_regions',
             metadata,
             Column('id', INTEGER, primary_key = True),
             Column('region_id', SMALLINT),
-            Column('name', VARCHAR(50))
-        )
+            Column('name', VARCHAR(255)))
         metadata.create_all()
 
-    # if type == 'system_pricing_plans':
-    #     table = Table(
-    #         'system_pricing_plans',
-    #         metadata,
-    #         Column('id', INTEGER, primary_key = True),
-    #         Column('plan_id'),
-    #         Column('url'),
-    #         Column('name'),
-    #         Column('currency'),
-    #         Column('price'),
-    #         Column('is_taxable', BOOLEAN),
-    #         Column('description'),
-    #     )
-    #     metadata.create_all()
+    if table_name == 'system_pricing_plans':
+        table = Table(
+            'system_pricing_plans',
+            metadata,
+            Column('plan_id', VARCHAR(255), primary_key = True),
+            Column('name', VARCHAR(255)),
+            Column('currency', CHAR(3)),
+            Column('price', NUMERIC(15, 2)),
+            Column('is_taxable', BOOLEAN),
+            Column('description', VARCHAR(255)))
+        metadata.create_all()
 
-    # if type == 'system_alerts':
-    #     table = Table(
-    #             'system_alerts',
-    #             metadata,
-    #
-    #         )
-    #     metadata.create_all()
-
-
+    if table_name == 'system_alerts':
+        table = Table(
+            'system_alerts',
+            metadata,
+            Column('alert_id', VARCHAR(255), primary_key = True),
+            Column('type', VARCHAR(255)),
+            Column('time_start', TIMESTAMP),
+            Column('time_end', TIMESTAMP),
+            Column('station_ids', VARCHAR(65535)),
+            Column('region_ids', VARCHAR(65535)),
+            Column('summary', VARCHAR(255)),
+            Column('description', VARCHAR(255)),
+            Column('last_updated', TIMESTAMP))
+        metadata.create_all()
 
 main()
 
