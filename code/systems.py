@@ -1,18 +1,30 @@
-import requests
+"""Get list of GBFS feeds in US as JSON
+"""
+import json
+
 import pandas as pd
-import os
 
 
-gbfs_systems = requests.get("https://raw.githubusercontent.com/NABSA/gbfs/master/systems.csv")
-with open(
-    os.path.join("..", "data", "gbfs_systems.csv"),
-    "wb"
-) as f:
-    f.write(gbfs_systems.content)
+def main():
+    url = 'https://raw.githubusercontent.com/NABSA/gbfs/master/systems.csv'
+    df = pd.read_csv(url)
 
-systems = pd.read_csv(os.path.join("..", "data", "gbfs_systems.csv"))
-systems['System ID'] = systems['System ID'].str.lower()
+    # Keep systems in US
+    df = df[df['Country Code'] == 'US']
 
-systems.to_csv(os.path.join("..", "data", "gbfs_systems.csv"))
+    # Keep Name, Location, System ID, and Auto-Discovery URL
+    # and rename to simpler names
+    cols = {
+        'Name': 'name',
+        'Location': 'location',
+        'System ID': 'id',
+        'Auto-Discovery URL': 'url'}
+    df = df[cols.keys()]
+    df = df.rename(columns=cols)
+
+    d = df.to_dict(orient='records')
+    print(json.dumps(d, separators=(',', ':')))
 
 
+if __name__ == '__main__':
+    main()
